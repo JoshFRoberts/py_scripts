@@ -1,7 +1,8 @@
+import argparse
+
 import requests
 import json
 
-from numpy.f2py.auxfuncs import throw_error
 class SpotifyAPIException(Exception):
     pass
 
@@ -11,11 +12,9 @@ def get_client_credentials() -> dict[str, str]:
 
     with open('/home/joshuafroberts/.spt_client_id', 'r', encoding='utf-8') as client_id_file:
         client_id = client_id_file.read().splitlines()[0]
-        print(f"client_id: '{client_id}'")
 
     with open('/home/joshuafroberts/.spt_client_secret', 'r', encoding='utf-8') as client_secret_file:
         client_secret = client_secret_file.read().splitlines()[0]
-        print(f"client_secret: '{client_secret}'")
 
     return {
         'client_id': client_id,
@@ -23,9 +22,9 @@ def get_client_credentials() -> dict[str, str]:
     }
 
 class SpotifyConnection:
-    def __init__(self, client_id:str , client_secret:str):
-        self.client_id = client_id
-        self.client_secret = client_secret
+    def __init__(self, credentials: dict[str, str]):
+        self.client_id = credentials['client_id']
+        self.client_secret = credentials['client_secret']
         self.access_token = self._get_auth_key()
 
     def _get_auth_key(self):
@@ -36,7 +35,6 @@ class SpotifyConnection:
                          'client_id': self.client_id,
                          'client_secret': self.client_secret
                      })
-        #breakpoint()
         if response.status_code != 200:
             print(response.status_code)
             print(response.reason)
@@ -45,22 +43,23 @@ class SpotifyConnection:
 
     def get_artist(self, artist_id:str) -> dict:
         response = requests.get(
-            'https://accounts.spotify.com/api/artists' + f'/{artist_id}',
+            'https://api.spotify.com/v1/artists' + f'/{artist_id}',
                  headers={
-                     'Authorization': 'Bearer ' + self.client_id,
+                     'Authorization': f'Bearer {self.client_id}',
                  })
         if response.status_code != 200:
             print(response.status_code)
             print(response.reason)
+            print(response.request.url)
             raise SpotifyAPIException('reason: ' + response.reason)
         else:
             return dict(response.json())
 
     def get_album(self, album_id) -> dict:
         response = requests.get(
-            'https://accounts.spotify.com/api/albums' + f'/{album_id}',
+            'https://api.spotify.com/v1/albums' + f'/{album_id}',
                  headers={
-                     'Authorization': 'Bearer ' + self.client_id,
+                     'Authorization': f'Bearer {self.client_id}',
                  })
         if response.status_code != 200:
             print(response.status_code)
@@ -72,11 +71,52 @@ class SpotifyConnection:
     def get_song(self):
         ...
 
-    def get_playlist(self):
-        ...
+    def get_playlist(self, playlist_id:str) -> dict:
+        response = requests.get(
+            f'https://api.spotify.com/v1/playlists/{playlist_id}',
+                headers={'Authorization': f'Bearer {self.access_token}'},
+                params={
+                    'market': 'DE',
+                    'fields': 'tracks.items(track(name, artists(name))'
+                }
+            )
+        response.raise_for_status()
+
+        tracks = response.json().get('tracks').get('items')
+        for track in tracks:
+            song = track['track']['name']
+            artists = track['track']['artists']
+            artist_names: list[str] = []
+            for artist in artists:
+                artist_name = artist['name']
+                artist_names.append(artist_name)
+            print(f'{artist_names[0]}: {song}')
+
+        return dict(response.json())
+
+    def search(self, key:str, value:str) -> dict:
+        response = requests.get(
+            'https://api.spotify.com/v1/search',
+                headers={ 'Authorization': f'Bearer {self.client_id}'},
+                params={
+                    'q': f'{value}',
+                    'type': f'{key}',
+                    'market': 'DE',
+                    'limit': '10',
+                    'offset': '0'
+                })
+        response.raise_for_status()
+
+        return dict(response.json())
 
 
 if __name__ == '__main__':
 
-    cred = get_client_credentials()
-    SpotifyConnection(cred['client_id'], cred['client_secret']).get_auth_key()
+    con = SpotifyConnection(get_client_credentials())
+
+    default_value = '0xfprdFzAdLVlSRvbskpd5'
+    # replace default value with playlist id found in spotify link to playlist
+    # maybe later on replace with full link and parse id to improve usability
+
+    con.get_playlist(default_value)
+

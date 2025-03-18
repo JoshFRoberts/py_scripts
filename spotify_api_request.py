@@ -71,7 +71,7 @@ class SpotifyConnection:
     def get_song(self):
         ...
 
-    def get_playlist(self, playlist_id:str) -> dict:
+    def get_playlist(self, playlist_id:str) -> list:
         response = requests.get(
             f'https://api.spotify.com/v1/playlists/{playlist_id}',
                 headers={'Authorization': f'Bearer {self.access_token}'},
@@ -83,6 +83,8 @@ class SpotifyConnection:
         response.raise_for_status()
 
         tracks = response.json().get('tracks').get('items')
+        returned_list: list[dict[str, str]] = []
+
         for track in tracks:
             song = track['track']['name']
             artists = track['track']['artists']
@@ -90,9 +92,14 @@ class SpotifyConnection:
             for artist in artists:
                 artist_name = artist['name']
                 artist_names.append(artist_name)
-            print(f'{artist_names[0]}: {song}')
 
-        return dict(response.json())
+            if len(artist_names) == 1:
+                returned_list.append({
+                    'name': song,
+                    'artist': artist_names[0]
+                })
+
+        return returned_list
 
     def search(self, key:str, value:str) -> dict:
         response = requests.get(
@@ -112,11 +119,19 @@ class SpotifyConnection:
 
 if __name__ == '__main__':
 
+    from genius_scraper.web_crawler import GeniusConnection
     con = SpotifyConnection(get_client_credentials())
 
     default_value = '0xfprdFzAdLVlSRvbskpd5'
     # replace default value with playlist id found in spotify link to playlist
     # maybe later on replace with full link and parse id to improve usability
 
-    con.get_playlist(default_value)
+    songs = con.get_playlist(default_value)
+
+
+    genius = GeniusConnection()
+    for song in songs:
+        title = song['name']
+        artist = song['artist']
+        genius.get_songtext(artist, title)
 

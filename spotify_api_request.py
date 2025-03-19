@@ -47,13 +47,9 @@ class SpotifyConnection:
                  headers={
                      'Authorization': f'Bearer {self.client_id}',
                  })
-        if response.status_code != 200:
-            print(response.status_code)
-            print(response.reason)
-            print(response.request.url)
-            raise SpotifyAPIException('reason: ' + response.reason)
-        else:
-            return dict(response.json())
+        response.raise_for_status()
+
+        return dict(response.json())
 
     def get_album(self, album_id) -> dict:
         response = requests.get(
@@ -61,12 +57,9 @@ class SpotifyConnection:
                  headers={
                      'Authorization': f'Bearer {self.client_id}',
                  })
-        if response.status_code != 200:
-            print(response.status_code)
-            print(response.reason)
-            raise SpotifyAPIException('reason: ' + response.reason)
-        else:
-            return dict(response.json())
+        response.raise_for_status()
+
+        return dict(response.json())
 
     def get_song(self):
         ...
@@ -98,6 +91,13 @@ class SpotifyConnection:
                 'all_artists': artist_names,
             })
 
+            print(f'{song['name']}: ', end='')
+            for index, artist in enumerate(song['all_artists']):
+                print(f'{artist}', end='')
+                if not index == len(song['all_artists']) - 1:
+                    print(', ', end='')
+                print()
+
         return returned_list
 
     def search(self, key:str, value:str) -> dict:
@@ -125,13 +125,5 @@ if __name__ == '__main__':
     # replace default value with playlist id found in spotify link to playlist
     # maybe later on replace with full link and parse id to improve usability
 
-    songs = con.get_playlist(default_value)
-
-    for song in songs:
-        print(f'{song['name']}: ', end='')
-        for index, artist in enumerate(song['all_artists']):
-            print(f'{artist}', end='')
-            if not index == len(song['all_artists']) - 1:
-                print(', ', end='')
-        print()
+    print(con.search(key='artists', value='Fatoni'))
 

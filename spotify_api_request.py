@@ -93,11 +93,10 @@ class SpotifyConnection:
                 artist_name = artist['name']
                 artist_names.append(artist_name)
 
-            if len(artist_names) == 1:
-                returned_list.append({
-                    'name': song,
-                    'artist': artist_names[0]
-                })
+            returned_list.append({
+                'name': song,
+                'all_artists': artist_names,
+            })
 
         return returned_list
 
@@ -128,10 +127,11 @@ if __name__ == '__main__':
 
     songs = con.get_playlist(default_value)
 
-
-    genius = GeniusConnection()
     for song in songs:
-        title = song['name']
-        artist = song['artist']
-        genius.get_songtext(artist, title)
+        print(f'{song['name']}: ', end='')
+        for index, artist in enumerate(song['all_artists']):
+            print(f'{artist}', end='')
+            if not index == len(song['all_artists']) - 1:
+                print(', ', end='')
+        print()
 
